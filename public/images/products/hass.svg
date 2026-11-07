@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" rx="28" fill="#F4F8EC"/>
+  <circle cx="320" cy="60" r="56" fill="#E7F1D3"/>
+  <circle cx="80" cy="250" r="90" fill="#E7F1D3"/>
+  <path d="M198 72c52 0 92 43 92 99 0 65-39 104-92 104s-92-39-92-104c0-56 40-99 92-99Z" fill="#2F421C"/>
+  <path d="M198 101c35 0 61 30 61 70 0 47-27 75-61 75s-61-28-61-75c0-40 26-70 61-70Z" fill="#74A02E"/>
+  <path d="M198 112c28 0 48 24 48 59 0 38-20 62-48 62s-48-24-48-62c0-35 20-59 48-59Z" fill="#B1D276"/>
+  <circle cx="181" cy="172" r="13" fill="#44621D"/>
+  <path d="M198 101c-1-24 11-42 35-53-4 25-17 43-35 53Z" fill="#587F21"/>
+  <text x="198" y="268" text-anchor="middle" font-family="Georgia, serif" font-size="24" fill="#44621D">Hass orgánica</text>
+</svg>

@@ -1,0 +1,73 @@
+name: banapal
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: banapal-db
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-banapal}
+      POSTGRES_USER: ${DB_USERNAME:-banapal}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-banapal_secret}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-banapal} -d ${DB_DATABASE:-banapal}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: banapal-app
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: nginx:alpine
+    container_name: banapal-web
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  node:
+    image: node:22-alpine
+    container_name: banapal-node
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install && npm run build"
+
+  adminer:
+    image: adminer
+    container_name: banapal-adminer
+    profiles: ["tools"]
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
