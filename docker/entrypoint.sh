@@ -25,6 +25,12 @@ if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     php artisan migrate --force || true
 fi
 
+# Ejecutar seeders si está habilitado
+if [ "${RUN_SEEDS:-false}" = "true" ]; then
+    echo "Ejecutando seeders de la base de datos..."
+    php artisan db:seed --force || true
+fi
+
 # Limpieza y preparación de caché
 php artisan config:clear || true
 
