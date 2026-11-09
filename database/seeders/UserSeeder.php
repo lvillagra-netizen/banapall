@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
         $password = env('BANAPAL_ADMIN_PASSWORD') ?: 'Banapal2026!';
 
         $users = [
-            ['name' => 'Administrador BANAPAL', 'email' => 'admin@banapal.cl', 'role' => Role::Admin, 'phone' => '+56 9 1111 1111'],
+            ['name' => 'Administrador BANAPALL', 'email' => 'admin@banapal.cl', 'role' => Role::Admin, 'phone' => '+56 9 1111 1111'],
             ['name' => 'Valentina Rojas', 'email' => 'ventas@banapal.cl', 'role' => Role::Ventas, 'phone' => '+56 9 2222 2222'],
             ['name' => 'Matías Fuentes', 'email' => 'inventario@banapal.cl', 'role' => Role::Inventario, 'phone' => '+56 9 3333 3333'],
             ['name' => 'Camila Herrera', 'email' => 'contabilidad@banapal.cl', 'role' => Role::Contabilidad, 'phone' => '+56 9 4444 4444'],

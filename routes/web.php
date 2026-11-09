@@ -35,6 +35,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/pos', [PosController::class, 'index'])->middleware('permission:pos.access')->name('pos.index');
     Route::post('/pos', [PosController::class, 'store'])->middleware('permission:sales.create')->name('pos.store');
+    Route::get('/pos/{sale}/edit', [PosController::class, 'edit'])->middleware('permission:sales.create')->name('pos.edit');
+    Route::put('/pos/{sale}', [PosController::class, 'update'])->middleware('permission:sales.create')->name('pos.update');
 
     Route::get('/sales', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sales.index');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])->middleware('permission:sales.view')->name('sales.show');

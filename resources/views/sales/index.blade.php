@@ -83,7 +83,12 @@
                             <td class="whitespace-nowrap text-right font-semibold text-ink">{{ \App\Support\Money::format($sale->total, $sale->currency_code) }}</td>
                             <td class="whitespace-nowrap text-right {{ (float) $sale->balance > 0 ? 'font-medium text-rose-600' : 'text-slate-400' }}">{{ \App\Support\Money::format($sale->balance, $sale->currency_code) }}</td>
                             <td><span class="badge {{ $sale->status->badge() }}">{{ $sale->status->label() }}</span></td>
-                            <td class="text-right"><a href="{{ route('sales.show', $sale) }}" class="btn btn-ghost btn-sm">Ver</a></td>
+                            <td class="text-right">
+    <a href="{{ route('sales.show', $sale) }}" class="btn btn-ghost btn-sm">Ver</a>
+    @if ($sale->isDraft())
+        <a href="{{ route('pos.edit', $sale) }}" class="btn btn-primary btn-sm ml-2">Editar</a>
+    @endif
+</td>
                         </tr>
                     @empty
                         <tr>

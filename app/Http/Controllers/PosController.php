@@ -9,6 +9,7 @@ use App\Models\Bin;
 use App\Models\Chamber;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Sale;
 use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Services\ExchangeRateService;
@@ -21,7 +22,25 @@ use RuntimeException;
 
 class PosController extends Controller
 {
-    public function index(PriceService $prices, ExchangeRateService $exchangeRates): View
+    public function index(PriceService $prices, ExchangeRateService $exchangeRates, ?Sale $sale = null): View
+    {
+        return $this->renderPosView($prices, $exchangeRates, $sale);
+    }
+
+    public function edit(Sale $sale, PriceService $prices, ExchangeRateService $exchangeRates): View|RedirectResponse
+    {
+        if (! $sale->isDraft()) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'Solo se pueden editar ventas en estado borrador.');
+        }
+
+        $sale->load(['items', 'customer']);
+
+        return $this->renderPosView($prices, $exchangeRates, $sale);
+    }
+
+    protected function renderPosView(PriceService $prices, ExchangeRateService $exchangeRates, ?Sale $sale = null): View
     {
         $warehouses = Warehouse::query()->active()->orderBy('name')->get();
         $products = Product::query()
@@ -105,11 +124,37 @@ class PosController extends Controller
                 'warehouse_id' => $chamber->warehouse_id,
                 'warehouse_name' => $chamber->warehouse?->name,
             ])->values(),
+            'editingSale' => $sale ? [
+                'id' => $sale->id,
+                'customer_id' => $sale->customer_id,
+                'warehouse_id' => $sale->warehouse_id,
+                'currency_code' => $sale->currency_code,
+                'tax_mode' => $sale->tax_mode->value,
+                'notes' => $sale->notes ?? '',
+                'items' => $sale->items->map(fn ($item) => [
+                    'product_id' => $item->product_id,
+                    'chamber_id' => $item->chamber_id,
+                    'bin_id' => $item->bin_id,
+                    'name' => $item->product_name,
+                    'sku' => $item->sku,
+                    'unit' => $item->product?->unit ?? 'un',
+                    'quantity' => (float) $item->quantity,
+                    'discount' => (float) $item->discount_amount,
+                ])->values()->all(),
+            ] : null,
         ]);
     }
 
     public function store(Request $request, SaleService $sales): RedirectResponse
     {
+        if ($request->has('payments')) {
+            $filtered = collect($request->input('payments', []))
+                ->filter(fn ($p) => (isset($p['amount']) && (float) $p['amount'] > 0) || ! empty($p['method']))
+                ->values()
+                ->all();
+            $request->merge(['payments' => ! empty($filtered) ? $filtered : null]);
+        }
+
         $data = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'warehouse_id' => ['required', 'exists:warehouses,id'],
@@ -161,6 +206,75 @@ class PosController extends Controller
                 : back()->withInput();
 
             return $redirect
+                ->withErrors($exception->errors())
+                ->with('error', $exception->getMessage());
+        } catch (RuntimeException $exception) {
+            return back()
+                ->withInput()
+                ->with('error', $exception->getMessage());
+        }
+    }
+
+    public function update(Request $request, Sale $sale, SaleService $sales): RedirectResponse
+    {
+        if (! $sale->isDraft()) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'Solo se pueden editar ventas en estado borrador.');
+        }
+
+        if ($request->has('payments')) {
+            $filtered = collect($request->input('payments', []))
+                ->filter(fn ($p) => (isset($p['amount']) && (float) $p['amount'] > 0) || ! empty($p['method']))
+                ->values()
+                ->all();
+            $request->merge(['payments' => ! empty($filtered) ? $filtered : null]);
+        }
+
+        $data = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'currency_code' => ['required', 'in:CLP,USD,PEN'],
+            'tax_mode' => ['nullable', 'in:iva_19,igv_18,export_0,exempt'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'mode' => ['required', 'in:draft,finalize'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.chamber_id' => ['nullable', 'exists:chambers,id'],
+            'items.*.bin_id' => ['nullable', 'exists:bins,id'],
+            'items.*.quantity' => ['required', 'numeric', 'gt:0'],
+            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'payments' => ['nullable', 'array'],
+            'payments.*.method' => ['required_with:payments', 'in:efectivo,transferencia,tarjeta,credito,cheque_fecha,yape,plin,otro'],
+            'payments.*.currency_code' => ['required_with:payments', 'in:CLP,USD,PEN'],
+            'payments.*.amount' => ['nullable', 'numeric', 'min:0'],
+            'payments.*.reference' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $payments = collect($data['payments'] ?? [])
+            ->filter(fn (array $payment) => isset($payment['amount']) && (float) $payment['amount'] > 0)
+            ->values()
+            ->all();
+
+        try {
+            $sale = $sales->updateDraft($sale, $data);
+
+            if ($data['mode'] === 'finalize') {
+                $sale = $sales->finalize($sale, $request->user(), $payments);
+
+                return redirect()
+                    ->route('sales.show', $sale)
+                    ->with('success', "Venta {$sale->number} validada correctamente.");
+            }
+
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('success', 'Borrador de venta actualizado correctamente.');
+        } catch (SaleValidationException $exception) {
+            $sale->update(['validation_errors' => $exception->errors()]);
+
+            return redirect()
+                ->route('sales.show', $sale)
                 ->withErrors($exception->errors())
                 ->with('error', $exception->getMessage());
         } catch (RuntimeException $exception) {

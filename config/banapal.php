@@ -2,7 +2,7 @@
 
 return [
     'company' => [
-        'name' => env('BANAPAL_COMPANY_NAME', 'BANAPAL SpA'),
+        'name' => env('BANAPAL_COMPANY_NAME', 'BANAPALL SpA'),
         'tax_id' => env('BANAPAL_COMPANY_TAX_ID', '76.543.210-8'),
         'address' => env('BANAPAL_COMPANY_ADDRESS', 'Av. Palta 1200, Santiago, Chile'),
         'activity' => env('BANAPAL_COMPANY_ACTIVITY', 'Packing y comercialización de paltas orgánicas'),

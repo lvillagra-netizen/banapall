@@ -45,7 +45,7 @@ class CatalogSeeder extends Seeder
                     'name' => $data['name'],
                     'slug' => strtolower($data['SKU']),
                     'variety' => $data['variety'],
-                    'description' => 'Palta orgánica certificada, seleccionada y empacada por BANAPAL.',
+                    'description' => 'Palta orgánica certificada, seleccionada y empacada por BANAPALL.',
                     'unit' => $data['unit'],
                     'package_weight_kg' => $data['weight'],
                     'is_organic' => true,

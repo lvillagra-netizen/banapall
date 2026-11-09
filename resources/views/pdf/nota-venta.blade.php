@@ -194,11 +194,13 @@
             </td>
             <td width="210">
                 <div class="folio-box">
-                    <div class="folio-label">Documento emitido</div>
+                    <div class="folio-label"></div>
                     <div class="folio-number">{{ $document->folio }}</div>
                     <div class="folio-type">{{ $document->type->label() }}</div>
                     <div class="folio-type">{{ $document->issued_at?->format('d/m/Y H:i') }}</div>
-                    <span class="status {{ $annulled ? 'status-void' : 'status-ok' }}">{{ $document->status->label() }} · SII {{ $document->sii_status->label() }}</span>
+                    @if ($annulled)
+                        <span class="status status-void">{{ $document->status->label() }}</span>
+                    @endif
                 </div>
             </td>
         </tr>
@@ -239,7 +241,7 @@
             <tr>
                 <th style="width: 48%;">Producto</th>
                 <th class="right">Cantidad</th>
-                <th class="right">Precio</th>
+                <th class="right">Precio Unitario</th>
                 <th class="right">Descuento</th>
                 <th class="right">Total</th>
             </tr>
@@ -265,7 +267,7 @@
             <td></td>
             <td width="280">
                 <table class="totals">
-                    <tr><td class="muted">Subtotal</td><td>{{ \App\Support\Money::format($totals['subtotal'] ?? $sale->subtotal, $currency) }}</td></tr>
+                    <tr><td class="muted">Neto</td><td>{{ \App\Support\Money::format($totals['subtotal'] ?? $sale->subtotal, $currency) }}</td></tr>
                     <tr><td class="muted">Descuentos</td><td>{{ \App\Support\Money::format($totals['discount_total'] ?? $sale->discount_total, $currency) }}</td></tr>
                     <tr><td class="muted">{{ $tax['label'] ?? $sale->tax_mode->label() }}</td><td>{{ \App\Support\Money::format($totals['tax_total'] ?? $sale->tax_total, $currency) }}</td></tr>
                     <tr class="grand"><td>Total</td><td>{{ \App\Support\Money::format($totals['total'] ?? $sale->total, $currency) }}</td></tr>
@@ -281,8 +283,8 @@
     @endif
 
     <div class="footer">
-        {{ $company['sii_resolution'] ?? 'Resolución SII' }} · Documento generado por el prototipo BANAPAL.<br>
-        Esta nota de venta es un documento simulado sin validez tributaria. SII y contabilidad operan en modo simulación.<br>
+        {{ $company['sii_resolution'] ?? 'Resolución SII' }} · Documento generado por el prototipo BANAPALL.<br>
+        Esta nota de venta es un documento simulado sin validez tributaria.<br>
         {{ $document->folio }} · {{ $company['name'] }} · {{ $document->issued_at?->format('d/m/Y H:i') }}
     </div>
 </body>

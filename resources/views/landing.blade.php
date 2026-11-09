@@ -3,17 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="BANAPAL, packing y comercialización de paltas orgánicas certificadas. Operación integrada para Chile, Perú y exportación.">
-    <title>BANAPAL · Paltas orgánicas con trazabilidad</title>
+    <meta name="description" content="BANAPALL, packing y comercialización de paltas orgánicas certificadas. Operación integrada para Chile, Perú y exportación.">
+    <title>BANAPALL · Paltas orgánicas con trazabilidad</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-cream text-slate-700">
     <header class="sticky top-0 z-40 border-b border-avocado-900/10 bg-cream/90 backdrop-blur">
         <div class="mx-auto flex h-20 max-w-7xl items-center gap-4 px-5 sm:px-8">
             <a href="{{ route('landing') }}" class="flex items-center gap-3">
-                <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPAL" class="h-11 w-11 rounded-xl">
+                <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPALL" class="h-11 w-11 rounded-xl">
                 <div>
-                    <p class="font-display text-xl font-semibold tracking-wide text-ink">BANAPAL</p>
+                    <p class="font-display text-xl font-semibold tracking-wide text-ink">BANAPALL</p>
                     <p class="text-[9px] uppercase tracking-[0.24em] text-avocado-700">Packing orgánico</p>
                 </div>
             </a>
@@ -47,7 +47,7 @@
                         Paltas orgánicas que llegan a destino <span class="text-avocado-700">con su historia completa.</span>
                     </h1>
                     <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-                        Del palto a la mesa, BANAPAL controla packing, inventario y venta en una operación trazable. Este sitio es el prototipo funcional de la operación interna.
+                        Del palto a la mesa, BANAPALL controla packing, inventario y venta en una operación trazable. Este sitio es el prototipo funcional de la operación interna.
                     </p>
                     <div class="mt-8 flex flex-wrap gap-3">
                         <a href="{{ route('login') }}" class="btn btn-primary px-6 py-3">
@@ -76,7 +76,7 @@
                 <div class="relative mx-auto w-full max-w-lg">
                     <div class="absolute inset-6 rotate-3 rounded-[2.5rem] bg-avocado-300/50"></div>
                     <div class="relative overflow-hidden rounded-[2.5rem] border border-avocado-200 bg-white p-4 shadow-2xl shadow-avocado-900/10">
-                        <img src="{{ asset('images/products/hass.svg') }}" alt="Palta Hass orgánica BANAPAL" class="w-full rounded-[2rem]">
+                        <img src="{{ asset('images/products/hass.svg') }}" alt="Palta Hass orgánica BANAPALL" class="w-full rounded-[2rem]">
                         <div class="absolute bottom-7 left-7 right-7 rounded-2xl border border-white/60 bg-white/90 p-4 shadow-lg backdrop-blur">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
@@ -136,7 +136,7 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-avocado-300">Una sola operación</p>
                         <h2 class="mt-2 font-display text-4xl font-semibold">Menos planillas, más control.</h2>
-                        <p class="mt-4 max-w-lg text-avocado-100/75">El prototipo conecta el punto de venta con inventario, folios, nota de venta, SII simulado y contabilidad.</p>
+                        <p class="mt-4 max-w-lg text-avocado-100/75">El prototipo conecta el Módulo de Ventas con inventario, folios, nota de venta, SII simulado y contabilidad.</p>
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
                         @foreach ([
@@ -202,7 +202,7 @@
 
     <footer class="border-t border-slate-200 bg-white">
         <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-6 text-xs text-slate-400 sm:px-8">
-            <p>© {{ now()->year }} BANAPAL SpA · {{ $company['activity'] }}</p>
+            <p>© {{ now()->year }} BANAPALL SpA · {{ $company['activity'] }}</p>
             <p>Prototipo funcional · SII y pagos simulados</p>
         </div>
     </footer>

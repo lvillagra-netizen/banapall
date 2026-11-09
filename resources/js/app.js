@@ -32,6 +32,7 @@ window.posApp = function () {
         payments: [],
         flash: '',
         flashType: 'info',
+        confirmOpen: false,
 
         init() {
             const config = window.__POS_CONFIG__ || {};
@@ -47,7 +48,27 @@ window.posApp = function () {
             this.warehouseId = config.defaultWarehouse || '';
             this.currency = config.defaultCurrency || 'CLP';
             this.taxMode = 'iva_19';
-            this.payments = [{ method: 'efectivo', currency_code: this.currency, amount: '', reference: '' }];
+            this.payments = [{ method: '', currency_code: this.currency, amount: '', reference: '' }];
+
+            // Pre‑populate fields when editing a draft sale
+            if (config.editingSale) {
+                const d = config.editingSale;
+                this.customerId = d.customer_id ?? '';
+                this.warehouseId = d.warehouse_id ?? this.warehouseId;
+                this.currency = d.currency_code ?? this.currency;
+                this.taxMode = d.tax_mode ?? this.taxMode;
+                this.notes = d.notes ?? '';
+                this.cart = (d.items ?? []).map(item => ({
+                    product_id: item.product_id,
+                    chamber_id: item.chamber_id,
+                    bin_id: item.bin_id,
+                    name: item.name,
+                    sku: item.sku,
+                    unit: item.unit,
+                    quantity: item.quantity,
+                    discount: item.discount ?? 0,
+                }));
+            }
         },
 
         get selectedCustomer() {
@@ -90,6 +111,50 @@ window.posApp = function () {
 
         get canFinalize() {
             return this.customerId && this.warehouseId && this.cart.length > 0;
+        },
+
+        validatePayments() {
+            for (let i = 0; i < this.payments.length; i++) {
+                const p = this.payments[i];
+                const amt = Number(p.amount || 0);
+                if (amt > 0 && !p.method) {
+                    this.notify('Seleccione el tipo de Pago para el monto ingresado.', 'error');
+                    return false;
+                }
+            }
+            return true;
+        },
+
+        requestFinalize() {
+            if (!this.canFinalize) {
+                this.notify('Selecciona cliente, bodega y al menos un producto.', 'error');
+                return;
+            }
+            if (!this.validatePayments()) {
+                return;
+            }
+            this.confirmOpen = true;
+        },
+
+        submitDraft() {
+            if (!this.canFinalize) {
+                this.notify('Selecciona cliente, bodega y al menos un producto.', 'error');
+                return;
+            }
+            if (this.$refs.modeInput) {
+                this.$refs.modeInput.value = 'draft';
+            }
+            this.$refs.posForm?.submit();
+        },
+
+        confirmFinalize() {
+            this.confirmOpen = false;
+            if (this.$refs.modeInput) {
+                this.$refs.modeInput.value = 'finalize';
+            }
+            this.$nextTick(() => {
+                this.$refs.posForm?.submit();
+            });
         },
 
         get filteredProducts() {
@@ -220,6 +285,7 @@ window.posApp = function () {
 
             this.$nextTick(() => {
                 this.$refs.productSearch?.focus();
+                this.productOpen = false;
             });
         },
 
@@ -270,7 +336,7 @@ window.posApp = function () {
 
         clearCart() {
             this.cart = [];
-            this.payments = [{ method: 'efectivo', currency_code: this.currency, amount: '', reference: '' }];
+            this.payments = [{ method: '', currency_code: this.currency, amount: '', reference: '' }];
         },
 
         lineSubtotal(item) {
@@ -325,7 +391,7 @@ window.posApp = function () {
 
         addPayment() {
             this.payments.push({
-                method: 'efectivo',
+                method: '',
                 currency_code: this.currency,
                 amount: this.remaining > 0 ? this.remaining.toFixed(this.currencies[this.currency]?.decimals ?? 2) : '',
                 reference: '',
@@ -344,14 +410,19 @@ window.posApp = function () {
             payment.amount = this.remaining.toFixed(this.currencies[this.currency]?.decimals ?? 2);
         },
 
-        allowedCurrencies(method) {
-            return this.paymentMethods.find((item) => item.value === method)?.currencies || Object.keys(this.currencies);
+        onMethodChange(payment) {
+            const allowed = this.allowedCurrencies(payment.method);
+            if (!allowed.includes(payment.currency_code)) {
+                payment.currency_code = allowed[0] || this.currency;
+            }
         },
 
-        onMethodChange(payment) {
-            if (!this.allowedCurrencies(payment.method).includes(payment.currency_code)) {
-                payment.currency_code = this.allowedCurrencies(payment.method)[0];
+        allowedCurrencies(method) {
+            if (!method) {
+                return Object.keys(this.currencies);
             }
+
+            return this.paymentMethods.find((item) => item.value === method)?.currencies || Object.keys(this.currencies);
         },
 
         toSaleCurrency(amount, currency) {

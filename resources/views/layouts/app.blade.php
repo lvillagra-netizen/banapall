@@ -14,9 +14,9 @@
 
     <aside class="fixed inset-y-0 left-0 z-50 flex w-72 -translate-x-full flex-col bg-avocado-950 text-white transition-transform duration-200 lg:translate-x-0" :class="{ 'translate-x-0': sidebarOpen }">
         <div class="flex h-20 items-center gap-3 border-b border-white/10 px-6">
-            <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPAL" class="h-10 w-10 rounded-xl">
+            <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPALL" class="h-10 w-10 rounded-xl">
             <div>
-                <p class="font-display text-xl font-semibold tracking-wide">BANAPAL</p>
+                <p class="font-display text-xl font-semibold tracking-wide">BANAPALL</p>
                 <p class="text-[10px] uppercase tracking-[0.24em] text-avocado-300">Packing orgánico</p>
             </div>
             <button type="button" class="ml-auto rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden" @click="sidebarOpen = false" aria-label="Cerrar menú">
@@ -38,7 +38,7 @@
                 @can('pos.access')
                     <a href="{{ route('pos.index') }}" class="sidebar-link {{ request()->routeIs('pos.*') ? 'sidebar-link-active' : '' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h2l2.2 9.2a2 2 0 0 0 2 1.5h6.8a2 2 0 0 0 2-1.6L20 8H7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-                        Punto de venta
+                        Módulo de Ventas
                     </a>
                 @endcan
                 @can('sales.view')
@@ -66,7 +66,7 @@
                 @can('inventory.view')
                     <a href="{{ route('inventory.index') }}" class="sidebar-link {{ request()->routeIs('inventory.index') ? 'sidebar-link-active' : '' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8.5 12 4l9 4.5v7L12 20l-9-4.5v-7Z" stroke-linejoin="round"/><path d="M3 8.5 12 13l9-4.5M12 13v7" stroke-linejoin="round"/></svg>
-                        Inventario
+                        Bodega Local
                     </a>
                     <a href="{{ route('inventory.movements') }}" class="sidebar-link {{ request()->routeIs('inventory.movements') ? 'sidebar-link-active' : '' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h12m0 0-3-3m3 3-3 3M20 17H8m0 0 3 3m-3-3 3-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -95,7 +95,7 @@
                 @endcan
             @endcanany
 
-            @canany(['billing.view', 'folios.manage', 'accounting.view', 'reports.view'])
+            @canany(['billing.view', 'folios.manage', 'reports.view'])
                 <p class="sidebar-label">Administración</p>
                 @can('billing.view')
                     <a href="{{ route('billing.documents') }}" class="sidebar-link {{ request()->routeIs('billing.documents') ? 'sidebar-link-active' : '' }}">
@@ -107,12 +107,6 @@
                     <a href="{{ route('billing.folios') }}" class="sidebar-link {{ request()->routeIs('billing.folios') ? 'sidebar-link-active' : '' }}">
                         <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h14v16H5V4Z" stroke-linejoin="round"/><path d="M8 8h8M8 12h8M8 16h4" stroke-linecap="round"/></svg>
                         Folios
-                    </a>
-                @endcan
-                @can('accounting.view')
-                    <a href="{{ route('billing.accounting') }}" class="sidebar-link {{ request()->routeIs('billing.accounting') ? 'sidebar-link-active' : '' }}">
-                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5m0 14h16" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        Contabilidad
                     </a>
                 @endcan
                 @can('reports.view')
@@ -172,7 +166,7 @@
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round"/></svg>
                 </button>
                 <div class="min-w-0">
-                    <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">@yield('eyebrow', 'BANAPAL · Prototipo funcional')</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">@yield('eyebrow', 'BANAPALL · Prototipo funcional')</p>
                     <h1 class="truncate font-display text-2xl font-semibold text-ink">@yield('title', 'Panel')</h1>
                 </div>
                 <div class="ml-auto flex items-center gap-3">
@@ -194,7 +188,7 @@
         </main>
 
         <footer class="mx-auto flex w-full max-w-[1500px] flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-slate-400 sm:px-6 lg:px-8">
-            <p>BANAPAL SpA · Prototipo con SII y contabilidad simulados.</p>
+            <p>BANAPALL SpA · Prototipo</p>
             <p>{{ config('app.name') }} · {{ now()->format('Y') }}</p>
         </footer>
     </div>

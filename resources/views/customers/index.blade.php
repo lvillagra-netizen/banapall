@@ -5,7 +5,7 @@
 
 @section('content')
     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p class="max-w-xl text-sm text-slate-500">Clientes nacionales e internacionales con moneda e impuesto sugerido para el punto de venta.</p>
+        <p class="max-w-xl text-sm text-slate-500">Clientes nacionales e internacionales con moneda e impuesto sugerido para el Módulo de Ventas.</p>
         @can('customers.manage')
             <a href="{{ route('customers.create') }}" class="btn btn-primary">Nuevo cliente</a>
         @endcan

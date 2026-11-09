@@ -6,7 +6,7 @@
 @section('content')
     @php($groupLabels = [
         'empresa' => 'Empresa',
-        'pos' => 'Punto de venta',
+        'pos' => 'Módulo de Ventas',
         'inventario' => 'Inventario',
         'ventas' => 'Ventas',
         'notificaciones' => 'Notificaciones',

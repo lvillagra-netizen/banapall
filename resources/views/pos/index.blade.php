@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Punto de venta')
-@section('eyebrow', 'Ventas · Punto de venta')
+@section('title', 'Módulo de Ventas')
+@section('eyebrow', 'Ventas · Módulo de Ventas')
 
 @push('styles')
     <style>[x-cloak] { display: none !important; }</style>
@@ -20,10 +20,15 @@
     @endif
 
     <div x-data="posApp()" class="mx-auto w-full max-w-6xl space-y-5">
-        <form x-ref="posForm" method="POST" action="{{ route('pos.store') }}" @submit="if (!canFinalize) { $event.preventDefault(); notify('Selecciona cliente, bodega y al menos un producto.', 'error'); }">
+        @php $formAction = $editingSale ? route('pos.update', $editingSale['id']) : route('pos.store'); @endphp
+    <form x-ref="posForm" method="POST" action="{{ $formAction }}" @submit="if (!canFinalize) { $event.preventDefault(); notify('Selecciona cliente, bodega y al menos un producto.', 'error'); }">
+        @if ($editingSale)
+            @method('PUT')
+        @endif>
             @csrf
             <input type="hidden" name="currency_code" :value="currency">
             <input type="hidden" name="tax_mode" :value="taxMode">
+            <input type="hidden" name="mode" x-ref="modeInput" value="finalize">
 
             {{-- Sugerencia 1: barra pegajosa con Total + acciones --}}
             <div class="sticky top-4 z-40 mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-avocado-950 px-5 py-3 text-white shadow-[0_8px_20px_rgba(47,66,28,.25)]">
@@ -36,8 +41,8 @@
                     </p>
                 </div>
                 <div class="flex gap-2">
-                    <button type="submit" name="mode" value="draft" class="btn border border-white/20 bg-white/10 text-white hover:bg-white/20" :disabled="cart.length === 0">Borrador</button>
-                    <button type="submit" name="mode" value="finalize" class="btn bg-avocado-300 text-avocado-950 hover:bg-avocado-200" :disabled="cart.length === 0">Validar y emitir</button>
+                    <button type="button" @click="submitDraft()" class="btn border border-white/20 bg-white/10 text-white hover:bg-white/20" :disabled="cart.length === 0">Borrador</button>
+                    <button type="button" @click="requestFinalize()" class="btn bg-avocado-300 text-avocado-950 hover:bg-avocado-200" :disabled="cart.length === 0">Validar y emitir</button>
                 </div>
             </div>
 
@@ -61,7 +66,7 @@
                                         <span class="h-1.5 w-1.5 rounded-full" :class="stockFor(entryProduct) > 0 ? 'bg-emerald-500' : 'bg-rose-500'"></span>
                                         Stock: <span x-text="stockFor(entryProduct)"></span><template x-if="entryChamberId"><span class="text-[10px] text-slate-400"> (cámara)</span></template>
                                     </span>
-                                    <span class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600" x-text="formatMoney(priceFor(entryProduct)) + ' / ' + entryProduct.unit"></span>
+                                    <span class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600" x-text="'Precio Unitario ' + formatMoney(priceFor(entryProduct)) + ' / ' + entryProduct.unit"></span>
                                     <span class="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-600" x-text="entryProduct.sku"></span>
                                 </div>
                             </template>
@@ -142,7 +147,7 @@
                                     <div class="flex items-start justify-between gap-4">
                                         <div class="min-w-0">
                                             <p class="text-sm font-semibold text-slate-800" x-text="item.name"></p>
-                                            <p class="text-[11px] text-slate-400" x-text="item.sku + ' · ' + formatMoney(linePrice(item)) + ' / ' + item.unit"></p>
+                                            <p class="text-[11px] text-slate-400" x-text="item.sku + ' · Precio Unitario ' + formatMoney(linePrice(item)) + ' / ' + item.unit"></p>
                                             <p x-show="item.bin_id" class="text-[10px] text-slate-500" x-text="'Bin: ' + bins.find(b => b.id === item.bin_id)?.code"></p>
                                             <p x-show="item.chamber_id" class="text-[10px] text-slate-500" x-text="'Cámara: ' + chambers.find(c => c.id === item.chamber_id)?.name"></p>
                                         </div>
@@ -269,7 +274,8 @@
                             <template x-for="(payment, index) in payments" :key="index">
                                 <div class="rounded-xl border border-slate-200 p-3">
                                     <div class="grid grid-cols-2 gap-2">
-                                        <select :name="'payments[' + index + '][method]'" x-model="payment.method" @change="onMethodChange(payment)" class="input h-9 py-1 text-xs">
+                                        <select :name="'payments[' + index + '][method]'" x-model="payment.method" @change="onMethodChange(payment)" class="input h-9 py-1 text-xs" :class="!payment.method && Number(payment.amount) > 0 ? 'border-rose-400 bg-rose-50/50' : ''">
+                                            <option value="">Seleccione el tipo de Pago...</option>
                                             <template x-for="method in paymentMethods" :key="method.value">
                                                 <option :value="method.value" x-text="method.label"></option>
                                             </template>
@@ -312,7 +318,7 @@
                             </details>
 
                             <div class="space-y-1.5 rounded-xl bg-slate-50 p-4 text-sm">
-                                <div class="flex justify-between text-slate-500"><span>Subtotal</span><span x-text="formatMoney(subtotal)"></span></div>
+                                <div class="flex justify-between text-slate-500"><span>Neto</span><span x-text="formatMoney(subtotal)"></span></div>
                                 <div class="flex justify-between text-slate-500" x-show="discountTotal > 0" x-cloak><span>Descuentos</span><span x-text="'− ' + formatMoney(discountTotal)"></span></div>
                                 <div class="flex justify-between text-slate-500"><span x-text="'Impuesto (' + (taxRate * 100) + '%)'"></span><span x-text="formatMoney(taxTotal)"></span></div>
                                 <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-ink"><span>Total</span><span x-text="formatMoney(total)"></span></div>
@@ -336,6 +342,47 @@
                 </div>
             </template>
         </form>
+
+        {{-- Modal de confirmación para Validar y Emitir --}}
+        <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="confirmOpen = false" @keydown.escape.window="confirmOpen = false">
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-avocado-100 text-avocado-800">
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Confirmar emisión de venta</h3>
+                        <p class="text-xs text-slate-500">¿Estás seguro de validar y emitir esta venta?</p>
+                    </div>
+                </div>
+
+                <div class="rounded-xl bg-slate-50 p-3 text-xs space-y-1.5 text-slate-600">
+                    <div class="flex justify-between">
+                        <span>Cliente:</span>
+                        <strong class="text-slate-800" x-text="selectedCustomer ? selectedCustomer.name : '—'"></strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Total:</span>
+                        <strong class="text-slate-800" x-text="formatMoney(total)"></strong>
+                    </div>
+                    <div class="flex justify-between" x-show="paidTotal > 0">
+                        <span>Monto abonado:</span>
+                        <strong class="text-slate-800" x-text="formatMoney(paidTotal)"></strong>
+                    </div>
+                    <div class="flex justify-between" x-show="remaining > 0">
+                        <span>Saldo pendiente:</span>
+                        <strong class="text-rose-600" x-text="formatMoney(remaining)"></strong>
+                    </div>
+                </div>
+
+                <p class="text-[11px] text-slate-400">Al confirmar se descontará el stock de bodega, se generará la nota de venta y el registro en el sistema.</p>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" @click="confirmOpen = false" class="btn btn-secondary text-xs">Cancelar</button>
+                    <button type="button" @click="confirmFinalize()" class="btn btn-primary text-xs">Confirmar y emitir</button>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection
 

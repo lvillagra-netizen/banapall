@@ -32,6 +32,9 @@
                     <button class="btn btn-primary">Validar venta</button>
                 </form>
             @endif
+            @if ($sale->isDraft())
+                <a href="{{ route('pos.edit', $sale) }}" class="btn btn-primary ml-2">Editar borrador</a>
+            @endif
 
             @if (in_array($sale->status->value, ['validada', 'completada'], true) && auth()->user()->can('sales.cancel'))
                 <button type="button" onclick="document.getElementById('cancel-sale').showModal()" class="btn btn-danger">Anular</button>
@@ -74,7 +77,7 @@
                             <tr>
                                 <th>Producto</th>
                                 <th class="text-right">Cantidad</th>
-                                <th class="text-right">Precio</th>
+                                <th class="text-right">Precio Unitario</th>
                                 <th class="text-right">Desc.</th>
                                 <th class="text-right">Impuesto</th>
                                 <th class="text-right">Total</th>
@@ -99,7 +102,7 @@
                 </div>
                 <div class="border-t border-slate-100 p-5">
                     <dl class="ml-auto max-w-xs space-y-1.5 text-sm">
-                        <div class="flex justify-between text-slate-500"><dt>Subtotal</dt><dd>{{ \App\Support\Money::format($sale->subtotal, $sale->currency_code) }}</dd></div>
+                        <div class="flex justify-between text-slate-500"><dt>Neto</dt><dd>{{ \App\Support\Money::format($sale->subtotal, $sale->currency_code) }}</dd></div>
                         <div class="flex justify-between text-slate-500"><dt>Descuentos</dt><dd>{{ \App\Support\Money::format($sale->discount_total, $sale->currency_code) }}</dd></div>
                         <div class="flex justify-between text-slate-500"><dt>{{ $sale->tax_mode->label() }} ({{ $sale->tax_mode->percentage() }}%)</dt><dd>{{ \App\Support\Money::format($sale->tax_total, $sale->currency_code) }}</dd></div>
                         <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-semibold text-ink"><dt>Total</dt><dd>{{ \App\Support\Money::format($sale->total, $sale->currency_code) }}</dd></div>
@@ -206,7 +209,8 @@
                         @csrf
                         <div>
                             <label class="label">Medio de pago</label>
-                            <select name="method" class="input">
+                            <select name="method" class="input" required>
+                                <option value="" disabled selected>Seleccione el tipo de Pago...</option>
                                 @foreach ($paymentMethods as $method)
                                     <option value="{{ $method->value }}">{{ $method->label() }}</option>
                                 @endforeach

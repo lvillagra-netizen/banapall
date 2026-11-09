@@ -12,9 +12,9 @@
             <div class="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-avocado-700/40 blur-2xl"></div>
             <div class="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-avocado-500/20 blur-3xl"></div>
             <a href="{{ route('landing') }}" class="relative flex items-center gap-3">
-                <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPAL" class="h-12 w-12 rounded-2xl">
+                <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPALL" class="h-12 w-12 rounded-2xl">
                 <div>
-                    <p class="font-display text-2xl font-semibold tracking-wide">BANAPAL</p>
+                    <p class="font-display text-2xl font-semibold tracking-wide">BANAPALL</p>
                     <p class="text-[10px] uppercase tracking-[0.28em] text-avocado-300">Packing orgánico</p>
                 </div>
             </a>
@@ -22,7 +22,7 @@
             <div class="relative my-auto max-w-lg">
                 <p class="mb-5 inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-avocado-200">Prototipo funcional · 2026</p>
                 <h2 class="font-display text-5xl font-semibold leading-tight">Del palto a la mesa, con trazabilidad de verdad.</h2>
-                <p class="mt-6 text-lg leading-relaxed text-avocado-100/80">Punto de venta, inventario, notas de venta y contabilidad simulada en una sola operación.</p>
+                <p class="mt-6 text-lg leading-relaxed text-avocado-100/80">Módulo de Ventas, inventario, notas de venta y contabilidad simulada en una sola operación.</p>
 
                 <div class="mt-10 grid grid-cols-3 gap-3">
                     <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -46,9 +46,9 @@
         <div class="flex items-center justify-center px-5 py-12 sm:px-10">
             <div class="w-full max-w-md">
                 <a href="{{ route('landing') }}" class="mb-10 flex items-center gap-3 lg:hidden">
-                    <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPAL" class="h-11 w-11 rounded-xl">
+                    <img src="{{ asset('images/banapal-mark.svg') }}" alt="BANAPALL" class="h-11 w-11 rounded-xl">
                     <div>
-                        <p class="font-display text-2xl font-semibold text-ink">BANAPAL</p>
+                        <p class="font-display text-2xl font-semibold text-ink">BANAPALL</p>
                         <p class="text-[10px] uppercase tracking-[0.24em] text-avocado-700">Packing orgánico</p>
                     </div>
                 </a>

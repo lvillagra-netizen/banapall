@@ -6,7 +6,7 @@
     <div class="mb-8">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-avocado-700">Acceso interno</p>
         <h1 class="mt-2 font-display text-4xl font-semibold text-ink">Bienvenido de vuelta</h1>
-        <p class="mt-3 text-sm leading-relaxed text-slate-500">Ingresa con tu cuenta para operar el POS, inventario y administración de BANAPAL.</p>
+        <p class="mt-3 text-sm leading-relaxed text-slate-500">Ingresa con tu cuenta para operar el POS, inventario y administración de BANAPALL.</p>
     </div>
 
     @include('partials.flash')
