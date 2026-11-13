@@ -1,6 +1,12 @@
 # PROGRESS.md
 
 ## Última tarea completada
+- **Observación POS: el campo "Cantidad" ahora selecciona todo su valor al enfocarse** (`pos/index.blade.php`, `@focus="$event.target.select()"`). Antes, al hacer clic y escribir, el dígito se **concatenaba** (ej. `45` + `7` → `457`); ahora **reemplaza** (`45` + `7` → `7`).
+  - Verificado con sonda Playwright antes/después en Chromium: sin `select()` → `17`/`457`; con `select()` → `7`. (`.select()` sí funciona en `input[type=number]`, aunque `selectionStart` devuelve `null`.)
+  - **Test E2E nuevo**: "POS selecciona toda la cantidad al enfocar el campo Cantidad" (fill `45` → Tab → click → escribir `7` → espera `7`; sin el fix daría `457`).
+  - Cambio solo en Blade → **el bundle JS no cambió** (`app-D7lBKMIH.js`); solo hizo falta `php artisan view:clear`. Test en verde.
+- **Mismo ajuste en la sección Pagos**: el input **Monto** (`payments[i][amount]`) ahora también hace `@focus="$event.target.select()"` → al enfocar queda seleccionado todo el monto y escribir reemplaza en lugar de concatenar. Test E2E "POS selecciona todo el monto al enfocar un campo de Pagos" (fill `45` → Tab → click → `7` → espera `7`).
+  - Validado con ambos tests: **E2E 24/24 en verde**.
 - **Corrección: los pagos hechos en un Borrador no se guardaban ni se mostraban en Ventas y notas** (ej. Borrador #39):
   1. **Causa raíz**: `PosController::store/update` calculaban `$payments` pero solo los pasaban a `finalize()`; con `mode=draft` **se descartaban en silencio** (verificado en DB: `payments` sin filas para `sale_id=39`, `paid_total=0`). Por eso la tarjeta "Pagos" mostraba *"Aún no hay pagos registrados."*.
   2. **`PaymentService`** (refactor con `buildPayment()` compartido):
@@ -78,7 +84,7 @@
 
 ## Estado actual
 - App Dockerizada operativa en http://localhost:8080 (web) con PostgreSQL (5433).
-- Pruebas E2E: **22/22 en verde** (`npm run test:e2e`): smoke7, fase4 7, nuevos flujos8.
+- Pruebas E2E: **24/24 en verde** (`npm run test:e2e`): smoke7, fase4 7, nuevos flujos10.
 - Migración de granularidad de stock por cámara aplicada; ChamberBinSeeder corre en DB demo.
 - Documentación de contexto y progreso actualizada.
 
@@ -86,6 +92,7 @@
 - **Docker monta `C:\SITIOS\banapal`** (no `C:\SITIOS\packing`, el directorio de trabajo). Tras cada edición en `packing`, **sincronizar los archivos cambiados a `C:\SITIOS\banapal`** (incluido `public/build` tras `npm run build`) o la app no reflejará los cambios. No copiar `packing\.env` sobre `banapal\.env` (packing tiene `DB_CONNECTION=sqlite`; banapal/`docker-compose` usa `pgsql`).
 
 ## Siguiente paso exacto
+- **Subir a GitHub** los cambios aún sin commitear (selección automática de texto al enfocar en **Cantidad** y en **Monto** de Pagos: `resources/views/pos/index.blade.php`, `tests/e2e/nuevos-flujos.spec.ts`, `PROGRESS.md`): `git add -A` → `git commit` → `git push origin main`.
 - **Recargar los pagos del Borrador #39** (no persistidos por el bug ya corregido) vía "Editar borrador" → sección Pagos → Borrador.
 - **Revisión visual del POS** en http://localhost:8080/pos con el usuario para confirmar los 7 ajustes (modal de stock, selects deshabilitados, sin Bodega/Tipo de cambio, "− Pago", líneas netas).
 - Pregunta abierta: ¿el desglose "Neto/Descuentos/Impuesto/Total" debe quedar también oculto en otras vistas (solo Notas) o solo se ajustó el POS y los PDFs?

@@ -129,6 +129,36 @@ test.describe('Nuevos flujos - POS, inventario y anulaciones', () => {
     await expect(page.getByText('Pagos confirmados y anulados')).toBeVisible();
   });
 
+  test('POS selecciona toda la cantidad al enfocar el campo Cantidad', async ({ page }) => {
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    const quantityInput = page.locator('[x-ref="quantityInput"]');
+    await quantityInput.fill('45');
+    await quantityInput.press('Tab');
+
+    // Al volver a enfocar, todo el valor debe quedar seleccionado: escribir reemplaza en lugar de concatenar
+    await quantityInput.click();
+    await page.keyboard.type('7');
+
+    await expect(quantityInput).toHaveValue('7');
+  });
+
+  test('POS selecciona todo el monto al enfocar un campo de Pagos', async ({ page }) => {
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+    const amountInput = page.locator('input[name$="[amount]"]').first();
+    await amountInput.fill('45');
+    await amountInput.press('Tab');
+
+    // Al volver a enfocar, todo el monto debe quedar seleccionado: escribir reemplaza en lugar de concatenar
+    await amountInput.click();
+    await page.keyboard.type('7');
+
+    await expect(amountInput).toHaveValue('7');
+  });
+
   test('POS valida que la cantidad no supere el stock disponible', async ({ page }) => {
     await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });

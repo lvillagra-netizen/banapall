@@ -111,7 +111,7 @@
                                     </div>
                                     <div>
                                         <label class="label">Cantidad</label>
-                                        <input x-ref="quantityInput" x-model.number="entryQuantity" type="number" min="1" step="1" class="input text-right" @keydown.enter.prevent="addEntry()">
+                                        <input x-ref="quantityInput" x-model.number="entryQuantity" type="number" min="1" step="1" class="input text-right" @focus="$event.target.select()" @keydown.enter.prevent="addEntry()">
                                     </div>
                                 </div>
 
@@ -274,7 +274,7 @@
                                         <input type="hidden" :name="'payments[' + index + '][currency_code]'" :value="payment.currency_code">
                                     </div>
                                     <div class="mt-2 flex items-center gap-2">
-                                        <input :name="'payments[' + index + '][amount]'" x-model="payment.amount" type="number" min="0" step="0.01" class="input h-9 py-1 text-right text-xs" placeholder="Monto">
+                                        <input :name="'payments[' + index + '][amount]'" x-model="payment.amount" type="number" min="0" step="0.01" class="input h-9 py-1 text-right text-xs" placeholder="Monto" @focus="$event.target.select()">
                                         <button type="button" @click="fillRemaining(payment)" class="btn btn-secondary btn-sm shrink-0">Saldo</button>
                                         <button type="button" @click="removePayment(index)" class="btn btn-ghost btn-sm shrink-0 px-2 text-rose-500">×</button>
                                     </div>
