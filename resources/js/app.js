@@ -33,16 +33,21 @@ window.posApp = function () {
         flash: '',
         flashType: 'info',
         confirmOpen: false,
+        stockAlertOpen: false,
+        stockAlertMessage: '',
 
         init() {
             const config = window.__POS_CONFIG__ || {};
+            const hiddenPaymentMethods = ['yape', 'plin', 'otro'];
             this.products = config.products || [];
             this.customers = config.customers || [];
             this.warehouses = config.warehouses || [];
             this.currencies = config.currencies || {};
             this.rates = config.rates || {};
             this.taxes = config.taxes || [];
-            this.paymentMethods = config.paymentMethods || [];
+            this.paymentMethods = (config.paymentMethods || []).filter(
+                (method) => !hiddenPaymentMethods.includes(method.value)
+            );
             this.bins = config.bins || [];
             this.chambers = config.chambers || [];
             this.warehouseId = config.defaultWarehouse || '';
@@ -54,20 +59,61 @@ window.posApp = function () {
             if (config.editingSale) {
                 const d = config.editingSale;
                 this.customerId = d.customer_id ?? '';
+                const draftCustomer = this.customers.find(
+                    (customer) => String(customer.id) === String(this.customerId)
+                );
+                this.customerQuery = draftCustomer ? draftCustomer.name : '';
                 this.warehouseId = d.warehouse_id ?? this.warehouseId;
                 this.currency = d.currency_code ?? this.currency;
                 this.taxMode = d.tax_mode ?? this.taxMode;
                 this.notes = d.notes ?? '';
-                this.cart = (d.items ?? []).map(item => ({
-                    product_id: item.product_id,
-                    chamber_id: item.chamber_id,
-                    bin_id: item.bin_id,
-                    name: item.name,
-                    sku: item.sku,
-                    unit: item.unit,
-                    quantity: item.quantity,
-                    discount: item.discount ?? 0,
+                this.cart = (d.items ?? []).map((item) => {
+                    const product = this.products.find(
+                        (p) => String(p.id) === String(item.product_id)
+                    );
+                    const warehouseStock = product?.stock_by_warehouse?.[this.warehouseId];
+                    const stock = item.chamber_id
+                        ? Number(warehouseStock?.by_chamber?.[item.chamber_id] || 0)
+                        : Number(warehouseStock?.quantity || 0);
+
+                    return {
+                        product_id: item.product_id,
+                        chamber_id: item.chamber_id,
+                        bin_id: item.bin_id,
+                        name: item.name,
+                        sku: item.sku,
+                        unit: item.unit,
+                        quantity: item.quantity,
+                        discount: item.discount ?? 0,
+                        stock,
+                    };
+                });
+
+                // Pagos capturados en el borrador (estado "pendiente")
+                const draftPayments = (d.payments ?? []).map((payment) => ({
+                    method: payment.method || '',
+                    currency_code: payment.currency_code || this.currency,
+                    amount: payment.amount ?? '',
+                    reference: payment.reference || '',
                 }));
+
+                if (draftPayments.length > 0) {
+                    // Si el método quedó oculto (yape/plin/otro), se re-agrega para que el select lo muestre
+                    draftPayments.forEach((payment) => {
+                        if (
+                            payment.method &&
+                            !this.paymentMethods.some((method) => method.value === payment.method)
+                        ) {
+                            this.paymentMethods.push({
+                                value: payment.method,
+                                label: payment.method,
+                                currencies: ['CLP', 'USD', 'PEN'],
+                            });
+                        }
+                    });
+
+                    this.payments = draftPayments;
+                }
             }
         },
 
@@ -127,7 +173,7 @@ window.posApp = function () {
 
         requestFinalize() {
             if (!this.canFinalize) {
-                this.notify('Selecciona cliente, bodega y al menos un producto.', 'error');
+                this.notify('Selecciona cliente y al menos un producto.', 'error');
                 return;
             }
             if (!this.validatePayments()) {
@@ -138,7 +184,7 @@ window.posApp = function () {
 
         submitDraft() {
             if (!this.canFinalize) {
-                this.notify('Selecciona cliente, bodega y al menos un producto.', 'error');
+                this.notify('Selecciona cliente y al menos un producto.', 'error');
                 return;
             }
             if (this.$refs.modeInput) {
@@ -182,6 +228,16 @@ window.posApp = function () {
                 // Si no sabemos a qué cámara pertenece cada bin, mostramos todos
                 return true;
             });
+        },
+
+        get filteredChambers() {
+            if (!this.warehouseId) {
+                return this.chambers;
+            }
+
+            return this.chambers.filter(
+                (chamber) => String(chamber.warehouse_id) === String(this.warehouseId)
+            );
         },
 
         get filteredCustomers() {
@@ -244,7 +300,7 @@ window.posApp = function () {
             }
 
             if (quantity > stock) {
-                this.notify('La cantidad supera el stock disponible.', 'error');
+                this.showStockAlert('La cantidad supera el stock disponible.');
 
                 return;
             }
@@ -255,7 +311,7 @@ window.posApp = function () {
 
             if (existing) {
                 if (existing.quantity + quantity > stock) {
-                    this.notify('La cantidad supera el stock disponible.', 'error');
+                    this.showStockAlert('La cantidad supera el stock disponible.');
 
                     return;
                 }
@@ -314,7 +370,7 @@ window.posApp = function () {
 
         increment(item) {
             if (item.quantity + 1 > item.stock) {
-                this.notify('No hay más stock disponible para este producto.', 'error');
+                this.showStockAlert('La cantidad supera el stock disponible.');
 
                 return;
             }
@@ -372,8 +428,6 @@ window.posApp = function () {
                 return;
             }
 
-            this.currency = customer.currency_code || this.currency;
-            this.taxMode = customer.tax_mode || this.taxMode;
             this.payments.forEach((payment) => {
                 if (!payment.amount) {
                     payment.currency_code = this.currency;
@@ -404,6 +458,16 @@ window.posApp = function () {
             if (this.payments.length === 0) {
                 this.addPayment();
             }
+        },
+
+        removeLastPayment() {
+            if (this.payments.length <= 1) {
+                this.payments = [{ method: '', currency_code: this.currency, amount: '', reference: '' }];
+
+                return;
+            }
+
+            this.payments.pop();
         },
 
         fillRemaining(payment) {
@@ -450,6 +514,11 @@ window.posApp = function () {
         notify(message, type = 'info') {
             this.flash = message;
             this.flashType = type;
+        },
+
+        showStockAlert(message) {
+            this.stockAlertMessage = message;
+            this.stockAlertOpen = true;
         },
     };
 };

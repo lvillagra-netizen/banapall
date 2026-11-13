@@ -256,7 +256,7 @@
                     <td class="right">{{ rtrim(rtrim(number_format((float) $item->quantity, 3, ',', '.'), '0'), ',') }}</td>
                     <td class="right">{{ \App\Support\Money::format($item->unit_price, $currency) }}</td>
                     <td class="right">{{ (float) $item->discount_amount > 0 ? \App\Support\Money::format($item->discount_amount, $currency) : '—' }}</td>
-                    <td class="right"><strong>{{ \App\Support\Money::format($item->line_total, $currency) }}</strong></td>
+                    <td class="right"><strong>{{ \App\Support\Money::format(\App\Support\Money::subtractCurrency($currency, $item->line_subtotal, $item->discount_amount), $currency) }}</strong></td>
                 </tr>
             @endforeach
         </tbody>

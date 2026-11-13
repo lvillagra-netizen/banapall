@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Contracts\AccountingConnector;
 use App\Contracts\SiiConnector;
-use App\Enums\Currency;
 use App\Enums\SaleStatus;
 use App\Enums\TaxMode;
 use App\Enums\ValidationStatus;
@@ -16,9 +15,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\AuditLogger;
-use App\Support\Money;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class SaleService
 {
@@ -31,8 +28,7 @@ class SaleService
         private readonly PaymentService $payments,
         private readonly SiiConnector $sii,
         private readonly AccountingConnector $accounting,
-    ) {
-    }
+    ) {}
 
     public function createDraft(array $data, User $seller): Sale
     {
@@ -109,9 +105,9 @@ class SaleService
         });
     }
 
-    public function finalize(Sale $sale, User $user, array $payments = []): Sale
+    public function finalize(Sale $sale, User $user, array $payments = [], bool $paymentsAuthoritative = false): Sale
     {
-        $result = DB::transaction(function () use ($sale, $user, $payments) {
+        $result = DB::transaction(function () use ($sale, $user, $payments, $paymentsAuthoritative) {
             $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
 
             if (! $sale->isDraft()) {
@@ -142,14 +138,30 @@ class SaleService
                 "Venta {$sale->number} validada y documento emitido",
             );
 
+            // Cuando el formulario (POS) es la fuente de verdad, se descartan los pagos
+            // "pendientes" del borrador y se registran los enviados en el formulario.
+            if ($paymentsAuthoritative) {
+                $this->payments->discardDraftPayments($sale);
+            }
+
             if ($payments !== []) {
                 $sale = $this->payments->record($sale->fresh(), $payments, $user);
+            } else {
+                $sale = $this->payments->confirmPending($sale->fresh(), $user);
             }
 
             return $sale->fresh(['items', 'customer', 'warehouse', 'documents', 'payments']);
         });
 
         return $result;
+    }
+
+    /**
+     * Persiste los pagos capturados en el POS mientras la venta sigue en borrador.
+     */
+    public function saveDraftPayments(Sale $sale, array $payments, User $user): Sale
+    {
+        return $this->payments->recordDraft($sale, $payments, $user);
     }
 
     public function cancel(Sale $sale, User $user, string $reason): Sale
@@ -220,7 +232,7 @@ class SaleService
         if ($totalClp > $maxCancelAmount) {
             throw new SaleValidationException([
                 'errors' => [
-                    "No puedes anular ventas mayores a $" . number_format($maxCancelAmount, 0, ',', '.') . " CLP. Solicita autorización a un administrador.",
+                    'No puedes anular ventas mayores a $'.number_format($maxCancelAmount, 0, ',', '.').' CLP. Solicita autorización a un administrador.',
                 ],
             ]);
         }

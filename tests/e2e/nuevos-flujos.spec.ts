@@ -64,6 +64,71 @@ test.describe('Nuevos flujos - POS, inventario y anulaciones', () => {
     await expect(page.getByText(/Borrador de venta guardado/)).toBeVisible();
   });
 
+  test('POS carga los datos de un borrador al editar y permite guardarlo', async ({ page }) => {
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+    // Crear un borrador con producto y cliente
+    await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await addFirstProduct(page, 'HASS-10');
+    await page.getByRole('button', { name: 'Agregar', exact: true }).click();
+    await selectFirstCustomer(page);
+    await page.getByRole('button', { name: 'Borrador', exact: true }).click();
+    await expect(page).toHaveURL(/\/sales\/\d+/, { timeout: 30000 });
+
+    // Abrir la edición del borrador
+    await page.getByRole('link', { name: 'Editar borrador' }).click();
+    await expect(page).toHaveURL(/\/pos\/\d+\/edit/, { timeout: 30000 });
+
+    // Los datos del borrador deben aparecer en el formulario
+    await expect(page.getByPlaceholder('Buscar por nombre o RUT…')).not.toHaveValue('');
+    const cart = page.locator('div.divide-y');
+    await expect(cart.getByText('HASS-10')).toBeVisible();
+    await expect(cart.locator('span.min-w-9')).toHaveText('1');
+
+    // Modificar la cantidad y volver a guardar
+    await cart.getByRole('button', { name: '+' }).click();
+    await expect(cart.locator('span.min-w-9')).toHaveText('2');
+
+    await page.getByRole('button', { name: 'Borrador', exact: true }).click();
+    await expect(page).toHaveURL(/\/sales\/\d+/, { timeout: 30000 });
+    await expect(page.getByText('Borrador de venta actualizado correctamente.')).toBeVisible();
+  });
+
+  test('POS guarda los pagos de un borrador, se muestran en el detalle y se confirman al validar', async ({ page }) => {
+    await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+    // Crear un borrador con un abono
+    await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await addFirstProduct(page, 'HASS-10');
+    await page.getByRole('button', { name: 'Agregar', exact: true }).click();
+    await selectFirstCustomer(page);
+
+    await page.locator('select[name$="[method]"]').first().selectOption('efectivo');
+    await page.locator('input[name$="[amount]"]').first().fill('10000');
+
+    await page.getByRole('button', { name: 'Borrador', exact: true }).click();
+    await expect(page).toHaveURL(/\/sales\/\d+/, { timeout: 30000 });
+
+    // El detalle del borrador debe listar el pago como pendiente
+    await expect(page.getByText('Pagos registrados en el borrador')).toBeVisible();
+    await expect(page.locator('span.badge').filter({ hasText: 'Pendiente' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Efectivo' }).first()).toBeVisible();
+
+    // Al editar, el pago debe recargarse en el POS
+    await page.getByRole('link', { name: 'Editar borrador' }).click();
+    await expect(page).toHaveURL(/\/pos\/\d+\/edit/, { timeout: 30000 });
+    await expect(page.locator('select[name$="[method]"]').first()).toHaveValue('efectivo');
+    await expect(page.locator('input[name$="[amount]"]').first()).toHaveValue('10000');
+
+    // Al validar, el pago pendiente debe quedar confirmado
+    await page.getByRole('button', { name: 'Validar y emitir' }).click();
+    await page.getByRole('button', { name: 'Confirmar y emitir' }).click();
+    await expect(page).toHaveURL(/\/sales\/\d+/, { timeout: 30000 });
+
+    await expect(page.locator('span.badge').filter({ hasText: 'Confirmado' }).first()).toBeVisible();
+    await expect(page.getByText('Pagos confirmados y anulados')).toBeVisible();
+  });
+
   test('POS valida que la cantidad no supere el stock disponible', async ({ page }) => {
     await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     await page.goto('/pos', { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -116,6 +181,7 @@ test.describe('Nuevos flujos - POS, inventario y anulaciones', () => {
     await page.locator('button.block.w-full:visible').first().click();
 
     await page.getByRole('button', { name: 'Validar y emitir' }).click();
+    await page.getByRole('button', { name: 'Confirmar y emitir' }).click();
     await expect(page).toHaveURL(/\/sales\/\d+/, { timeout: 30000 });
     await expect(page.getByText(/validada correctamente/)).toBeVisible();
 

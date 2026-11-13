@@ -35,7 +35,7 @@ class PosController extends Controller
                 ->with('error', 'Solo se pueden editar ventas en estado borrador.');
         }
 
-        $sale->load(['items', 'customer']);
+        $sale->load(['items', 'customer', 'payments']);
 
         return $this->renderPosView($prices, $exchangeRates, $sale);
     }
@@ -110,7 +110,7 @@ class PosController extends Controller
                 'label' => $method->label(),
                 'currencies' => $method->allowedCurrencies(),
             ])->values(),
-            'bins' => Bin::query()->active()->orderBy('name')->get()->map(fn (Bin $bin) => [
+            'bins' => Bin::query()->active()->orderBy('code')->get()->map(fn (Bin $bin) => [
                 'id' => $bin->id,
                 'code' => $bin->code,
                 'name' => $bin->name,
@@ -141,6 +141,16 @@ class PosController extends Controller
                     'quantity' => (float) $item->quantity,
                     'discount' => (float) $item->discount_amount,
                 ])->values()->all(),
+                'payments' => $sale->payments
+                    ->where('status', 'pendiente')
+                    ->map(fn ($payment) => [
+                        'method' => $payment->method->value,
+                        'currency_code' => $payment->currency_code,
+                        'amount' => (float) $payment->amount,
+                        'reference' => (string) ($payment->reference ?? ''),
+                    ])
+                    ->values()
+                    ->all(),
             ] : null,
         ]);
     }
@@ -186,12 +196,14 @@ class PosController extends Controller
             $sale = $sales->createDraft($data, $request->user());
 
             if ($data['mode'] === 'finalize') {
-                $sale = $sales->finalize($sale, $request->user(), $payments);
+                $sale = $sales->finalize($sale, $request->user(), $payments, true);
 
                 return redirect()
                     ->route('sales.show', $sale)
                     ->with('success', "Venta {$sale->number} validada correctamente.");
             }
+
+            $sale = $sales->saveDraftPayments($sale, $payments, $request->user());
 
             return redirect()
                 ->route('sales.show', $sale)
@@ -260,12 +272,14 @@ class PosController extends Controller
             $sale = $sales->updateDraft($sale, $data);
 
             if ($data['mode'] === 'finalize') {
-                $sale = $sales->finalize($sale, $request->user(), $payments);
+                $sale = $sales->finalize($sale, $request->user(), $payments, true);
 
                 return redirect()
                     ->route('sales.show', $sale)
                     ->with('success', "Venta {$sale->number} validada correctamente.");
             }
+
+            $sale = $sales->saveDraftPayments($sale, $payments, $request->user());
 
             return redirect()
                 ->route('sales.show', $sale)

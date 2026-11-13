@@ -1,6 +1,38 @@
 # PROGRESS.md
 
 ## Última tarea completada
+- **Corrección: los pagos hechos en un Borrador no se guardaban ni se mostraban en Ventas y notas** (ej. Borrador #39):
+  1. **Causa raíz**: `PosController::store/update` calculaban `$payments` pero solo los pasaban a `finalize()`; con `mode=draft` **se descartaban en silencio** (verificado en DB: `payments` sin filas para `sale_id=39`, `paid_total=0`). Por eso la tarjeta "Pagos" mostraba *"Aún no hay pagos registrados."*.
+  2. **`PaymentService`** (refactor con `buildPayment()` compartido):
+     - `recordDraft()` — persiste los pagos del borrador con estado **`pendiente`** y recalcula `paid_total`/`balance` del borrador.
+     - `discardDraftPayments()` — borra los `pendiente` (el form del POS es la fuente de verdad al validar).
+     - `confirmPending()` — al validar: `pendiente` → `confirmado` (+`paid_at`, `received_by`, asiento contable) y recalcula `paid_total`/`balance`/`status` (Validada/Completada).
+     - `pendingTotal()` / `totalFor()`; `confirmedTotal()` ahora delega en `totalFor()`.
+  3. **`SaleService::finalize(..., bool $paymentsAuthoritative = false)`**: si es autoritativo (POS) descarta los `pendiente` y registra los del form; si no (`SaleController::validateSale`, sin form) confirma los `pendiente` existentes. `SaleService::saveDraftPayments()` expone el guardado.
+  4. **`PosController`**: `store`/`update` llaman `saveDraftPayments()` en `mode=draft` y pasan `true` en `mode=finalize`; `editingSale` ahora incluye `payments` (solo `pendiente`); `edit()` hace `load(['items','customer','payments'])`.
+  5. **`app.js`**: `init()` precarga `editingSale.payments` (y re-agrega al listado un método filtrado —yape/plin/otro— para que el `<select>` lo muestre en vez de enviar `""`).
+  6. **`sales/show`**: subtítulo dinámico (*"Pagos registrados en el borrador · pendientes de confirmar al validar"* vs *"Pagos confirmados y anulados"*); fecha usa `paid_at ?? created_at`. El badge `default => 'badge-warning'` ya renderizaba "Pendiente". Además `Sale::paymentStatus()` (usa `paid_total`) ahora muestra "Parcial"/"Pagado" también en borradores.
+  - **Test E2E nuevo**: crea borrador con abono de 10.000 → detalle muestra *Pendiente* + Efectivo → Editar recarga method/amount → Validar y emitir → badge *Confirmado*.
+  - Validado: `npm run build`, `view:clear`, Pint limpio, **E2E 22/22 en verde**.
+  - ⚠ **Dato perdido**: los pagos que el usuario cargó en el **Borrador #39** nunca se persistieron (bug ya corregido) y no se pueden recuperar; hay que recargarlos vía "Editar borrador".
+- **Corrección: "Editar" de un borrador mostraba el formulario vacío** (Ventas y notas → Editar):
+  1. **Causa raíz**: `PosController::edit()` sí pasaba `$editingSale` a la vista y el JS ya tenía el bloque de precarga (`if (config.editingSale)`), pero `pos/index.blade.php` **no lo inyectaba en `window.__POS_CONFIG__`** → `config.editingSale` era `undefined`. Agregado `editingSale: @json($editingSale)`.
+  2. **Cliente visible**: en `init()` se precarga `customerQuery` con el nombre del cliente del borrador (el buscador mostraba vacío aunque `customerId` estuviera seteado).
+  3. **`stock` de cada ítem**: los items cargados no traían `stock` y `increment()` lo usa → se calcula desde `product.stock_by_warehouse` (bodega del borrador, o `by_chamber` si el ítem tiene cámara).
+  4. **Bug colateral corregido**: los inputs ocultos usaban `:value="item.chamber_id || null"`; Alpine asigna `el.value = null` → se enviaba el **string `"null"`** y fallaba `exists:chambers,id` en cualquier venta sin cámara/bin. Cambiado a `?? ''` (el middleware global `ConvertEmptyStringsToNull` lo convierte en `null`).
+  5. Quitado un `>` suelto tras `@endif` en el form (`@method('PUT')`) que se renderizaba como texto visible.
+  - **Test E2E nuevo** (`nuevos-flujos.spec.ts` "POS carga los datos de un borrador al editar y permite guardarlo"): crea borrador → Editar → verifica cliente + producto en carrito → cambia cantidad a 2 → guarda y confirma "Borrador de venta actualizado correctamente.".
+  - Validado: `npm run build`, `view:clear`, **E2E 21/21 en verde**.
+- **7 ajustes de UX/ventas en POS (reunión)**, todos aplicados y verificados con `npm run build`, `view:clear`, `cache:clear` y E2E **20/20 en verde**:
+  1. **Modal de stock**: si cantidad > stock, mensaje "La cantidad supera el stock disponible." en modal (`showStockAlert` en `app.js` + markup en `pos/index.blade.php`); `addEntry`/`increment` ya no usan `notify` con ese texto (evita fallo de strict mode en `nuevos-flujos.spec.ts:75`).
+  2. **Moneda e Impuesto deshabilitados** en "Cliente y Condiciones" (CLP / IVA 19%); se quitaron sus `@change`/`onCurrencyChange` del binding y `onCustomerChange` ya no pisa moneda/impuesto desde el cliente.
+  3. **Bloque "Tipo de cambio" eliminado** del POS (la línea en `sales/show` Trazabilidad se mantine por ser otra vista).
+  4. **Bodega de salida eliminada** como selector visible → `<input hidden name="warehouse_id">` (`PosController::store` lo requiere).
+  5. **Pagos: moneda deshabilitada** (select `disabled` sin `name` + hidden `payments[i][currency_code]`).
+  6. **Botón "− Pago"** en header de Pagos (`removeLastPayment`, deshabilitado si no hay pagos).
+  7. **Línea neta sin IVA**: carrito usa `lineTaxable(item)`; PDF (`nota-venta` L259) y `sales/show` L97 usan `Money::subtractCurrency(currency, line_subtotal, discount_amount)`. Desglose Neto/Descuentos/Impuesto/Total queda solo en la tarjeta de Notas. `lineTotal` sigue alimentando "Total a cobrar" de la barra fija.
+  - Además: ocultos métodos de pago `yape`/`plin`/`otro` en `init()`; `filteredChambers` filtra por `warehouseId` fijo (evita cámara de otra bodega con stock 0); `warehouse_name` salió del label de cámara.
+- **3 fallos E2E preexistentes corregidos**: bins ordenados por `code` en `PosController` (index 1 = BIN-A1); test de validación ahora clica "Confirmar y emitir" tras el modal; `playwright.config.ts` timeout 60s→120s (smoke /chambers era flaky por tiempo acumulado).
 - **Actualización de pie de página**: Se actualizó el texto del pie en [layouts/app.blade.php](file:///c:/SITIOS/banapal/resources/views/layouts/app.blade.php#L191) de `"BANAPALL SpA · Prototipo con SII y contabilidad simulados."` a `"BANAPALL SpA · Prototipo"`. Sincronizado a `packing` y limpiada la caché de vistas en Docker.
 - **Implementación de observaciones en Módulo de Ventas y PDF**:
   1. **Confirmación antes de emitir**: Al presionar "Validar y emitir" en el Módulo de Ventas, se despliega un modal con el resumen de la venta (cliente, total a cobrar, abono y saldo pendiente) solicitando confirmación del usuario antes de procesar y descontar stock.
@@ -46,7 +78,7 @@
 
 ## Estado actual
 - App Dockerizada operativa en http://localhost:8080 (web) con PostgreSQL (5433).
-- Pruebas E2E: **20/20 en verde** (`npm run test:e2e`): smoke7, fase4 7, nuevos flujos6.
+- Pruebas E2E: **22/22 en verde** (`npm run test:e2e`): smoke7, fase4 7, nuevos flujos8.
 - Migración de granularidad de stock por cámara aplicada; ChamberBinSeeder corre en DB demo.
 - Documentación de contexto y progreso actualizada.
 
@@ -54,11 +86,14 @@
 - **Docker monta `C:\SITIOS\banapal`** (no `C:\SITIOS\packing`, el directorio de trabajo). Tras cada edición en `packing`, **sincronizar los archivos cambiados a `C:\SITIOS\banapal`** (incluido `public/build` tras `npm run build`) o la app no reflejará los cambios. No copiar `packing\.env` sobre `banapal\.env` (packing tiene `DB_CONNECTION=sqlite`; banapal/`docker-compose` usa `pgsql`).
 
 ## Siguiente paso exacto
+- **Recargar los pagos del Borrador #39** (no persistidos por el bug ya corregido) vía "Editar borrador" → sección Pagos → Borrador.
+- **Revisión visual del POS** en http://localhost:8080/pos con el usuario para confirmar los 7 ajustes (modal de stock, selects deshabilitados, sin Bodega/Tipo de cambio, "− Pago", líneas netas).
+- Pregunta abierta: ¿el desglose "Neto/Descuentos/Impuesto/Total" debe quedar también oculto en otras vistas (solo Notas) o solo se ajustó el POS y los PDFs?
 - Confirmar con el usuario si además debe ocultarse la ruta `billing.accounting` (hoy accesible por URL con permiso `accounting.view`) o eliminarse del todo (ruta + controlador + permiso).
 - Decidir granularidad de **bins a nivel stock**: hoy `stocks` no tiene `bin_id` (bin es trazabilidad en `stock_movements`/`sale_items`); si se quiere stock por bin, crear migración (columna + unique compuesto) y poblar desde ChamberBinSeeder/inventario.
 - Evaluar otorgar `inventory.approve` al rol `inventario` (hoy solo `admin` aprueba movimientos).
 - Deuda de estilo: `vendor/bin/pint app` reporta≈28 archivos preexistentes fuera de convención (los archivos tocados en esta fase ya están limpios); correr Pint global si se quiere la suite verde de calidad.
-- Flujos pendientes: edición de borradores (`updateDraft` no tiene ruta/UI) y mostrar `validation_errors` también en el POS al volver.
+- Flujos pendientes: mostrar `validation_errors` también en el POS al volver (hoy solo en `sales/show`).
 - Copiar cambios pendientes packing→banapal siempre que se edite código.
 
 ## Dudas o bloqueos

@@ -94,7 +94,7 @@
                                     <td class="whitespace-nowrap text-right">{{ \App\Support\Money::format($item->unit_price, $sale->currency_code) }}</td>
                                     <td class="text-right text-slate-400">{{ (float) $item->discount_amount > 0 ? \App\Support\Money::format($item->discount_amount, $sale->currency_code) : '—' }}</td>
                                     <td class="text-right text-slate-400">{{ \App\Support\Money::format($item->tax_amount, $sale->currency_code) }}</td>
-                                    <td class="whitespace-nowrap text-right font-semibold text-ink">{{ \App\Support\Money::format($item->line_total, $sale->currency_code) }}</td>
+                                    <td class="whitespace-nowrap text-right font-semibold text-ink">{{ \App\Support\Money::format(\App\Support\Money::subtractCurrency($sale->currency_code, $item->line_subtotal, $item->discount_amount), $sale->currency_code) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -116,7 +116,13 @@
                 <div class="card-header">
                     <div>
                         <h2 class="section-title">Pagos</h2>
-                        <p class="mt-1 text-xs text-slate-500">Pagos confirmados y anulados</p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            @if ($sale->isDraft())
+                                Pagos registrados en el borrador · pendientes de confirmar al validar
+                            @else
+                                Pagos confirmados y anulados
+                            @endif
+                        </p>
                     </div>
                 </div>
                 <div class="table-wrap">
@@ -134,7 +140,7 @@
                         <tbody>
                             @forelse ($sale->payments as $payment)
                                 <tr>
-                                    <td class="whitespace-nowrap text-xs">{{ $payment->paid_at?->format('d/m/Y H:i') }}</td>
+                                    <td class="whitespace-nowrap text-xs">{{ ($payment->paid_at ?? $payment->created_at)?->format('d/m/Y H:i') }}</td>
                                     <td>{{ $payment->method->label() }}</td>
                                     <td class="text-xs text-slate-400">{{ $payment->reference ?: '—' }}</td>
                                     <td class="whitespace-nowrap text-right font-medium">{{ \App\Support\Money::format($payment->amount, $payment->currency_code) }}</td>

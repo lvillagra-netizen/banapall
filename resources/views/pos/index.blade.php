@@ -21,13 +21,14 @@
 
     <div x-data="posApp()" class="mx-auto w-full max-w-6xl space-y-5">
         @php $formAction = $editingSale ? route('pos.update', $editingSale['id']) : route('pos.store'); @endphp
-    <form x-ref="posForm" method="POST" action="{{ $formAction }}" @submit="if (!canFinalize) { $event.preventDefault(); notify('Selecciona cliente, bodega y al menos un producto.', 'error'); }">
+    <form x-ref="posForm" method="POST" action="{{ $formAction }}" @submit="if (!canFinalize) { $event.preventDefault(); notify('Selecciona cliente y al menos un producto.', 'error'); }">
         @if ($editingSale)
             @method('PUT')
-        @endif>
-            @csrf
+        @endif
+        @csrf
             <input type="hidden" name="currency_code" :value="currency">
             <input type="hidden" name="tax_mode" :value="taxMode">
+            <input type="hidden" name="warehouse_id" :value="warehouseId">
             <input type="hidden" name="mode" x-ref="modeInput" value="finalize">
 
             {{-- Sugerencia 1: barra pegajosa con Total + acciones --}}
@@ -120,8 +121,8 @@
                                         <label class="label">Cámara (opcional)</label>
                                         <select x-model="entryChamberId" class="input text-sm">
                                             <option value="">Sin cámara</option>
-                                            <template x-for="chamber in chambers" :key="chamber.id">
-                                                <option :value="chamber.id" x-text="chamber.warehouse_name + ' · ' + chamber.name"></option>
+                                            <template x-for="chamber in filteredChambers" :key="chamber.id">
+                                                <option :value="chamber.id" x-text="chamber.name"></option>
                                             </template>
                                         </select>
                                     </div>
@@ -163,7 +164,7 @@
                                             Desc.
                                             <input x-model.number="item.discount" type="number" min="0" step="1" class="input h-9 w-24 px-2 py-1 text-right text-xs">
                                         </label>
-                                        <p class="ml-auto text-sm font-semibold text-ink" x-text="formatMoney(lineTotal(item))"></p>
+                                        <p class="ml-auto text-sm font-semibold text-ink" x-text="formatMoney(lineTaxable(item))"></p>
                                     </div>
                                 </div>
                             </template>
@@ -228,7 +229,7 @@
                             <div class="grid gap-3 sm:grid-cols-2">
                                 <div>
                                     <label class="label">Moneda</label>
-                                    <select x-model="currency" @change="onCurrencyChange()" class="input">
+                                    <select x-model="currency" disabled class="input cursor-not-allowed opacity-70">
                                         <template x-for="(meta, code) in currencies" :key="code">
                                             <option :value="code" x-text="code + ' · ' + meta.label"></option>
                                         </template>
@@ -236,27 +237,11 @@
                                 </div>
                                 <div>
                                     <label class="label">Impuesto</label>
-                                    <select x-model="taxMode" class="input">
+                                    <select x-model="taxMode" disabled class="input cursor-not-allowed opacity-70">
                                         <template x-for="tax in taxes" :key="tax.value">
                                             <option :value="tax.value" x-text="tax.label"></option>
                                         </template>
                                     </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="label">Bodega de salida</label>
-                                <select name="warehouse_id" x-model="warehouseId" class="input">
-                                    <template x-for="warehouse in warehouses" :key="warehouse.id">
-                                        <option :value="warehouse.id" x-text="warehouse.name"></option>
-                                    </template>
-                                </select>
-                            </div>
-
-                            <div class="rounded-xl bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500">
-                                <div class="flex items-center justify-between gap-2">
-                                    <span x-text="'Tipo de cambio ' + currency"></span>
-                                    <span class="font-semibold text-slate-700" x-text="'$ ' + Number(rates[currency] || 0).toLocaleString('es-CL')"></span>
                                 </div>
                             </div>
                         </div>
@@ -268,7 +253,10 @@
                                 <h2 class="section-title">Pagos</h2>
                                 <p class="mt-1 text-xs text-slate-400">Puedes dejar saldo pendiente.</p>
                             </div>
-                            <button type="button" @click="addPayment()" class="btn btn-ghost btn-sm">+ Pago</button>
+                            <div class="flex gap-2">
+                                <button type="button" @click="addPayment()" class="btn btn-ghost btn-sm">+ Pago</button>
+                                <button type="button" @click="removeLastPayment()" class="btn btn-ghost btn-sm" :disabled="payments.length === 0">− Pago</button>
+                            </div>
                         </div>
                         <div class="card-body space-y-3">
                             <template x-for="(payment, index) in payments" :key="index">
@@ -280,11 +268,10 @@
                                                 <option :value="method.value" x-text="method.label"></option>
                                             </template>
                                         </select>
-                                        <select :name="'payments[' + index + '][currency_code]'" x-model="payment.currency_code" class="input h-9 py-1 text-xs">
-                                            <template x-for="code in allowedCurrencies(payment.method)" :key="code">
-                                                <option :value="code" x-text="code"></option>
-                                            </template>
+                                        <select x-model="payment.currency_code" disabled class="input h-9 cursor-not-allowed py-1 text-xs opacity-70">
+                                            <option :value="payment.currency_code" x-text="payment.currency_code"></option>
                                         </select>
+                                        <input type="hidden" :name="'payments[' + index + '][currency_code]'" :value="payment.currency_code">
                                     </div>
                                     <div class="mt-2 flex items-center gap-2">
                                         <input :name="'payments[' + index + '][amount]'" x-model="payment.amount" type="number" min="0" step="0.01" class="input h-9 py-1 text-right text-xs" placeholder="Monto">
@@ -335,13 +322,34 @@
             <template x-for="(item, index) in cart" :key="'hidden-' + item.product_id + '-' + (item.bin_id || '')">
                 <div>
                     <input type="hidden" :name="'items[' + index + '][product_id]'" :value="item.product_id">
-                    <input type="hidden" :name="'items[' + index + '][chamber_id]'" :value="item.chamber_id || null">
-                    <input type="hidden" :name="'items[' + index + '][bin_id]'" :value="item.bin_id || null">
+                    <input type="hidden" :name="'items[' + index + '][chamber_id]'" :value="item.chamber_id ?? ''">
+                    <input type="hidden" :name="'items[' + index + '][bin_id]'" :value="item.bin_id ?? ''">
                     <input type="hidden" :name="'items[' + index + '][quantity]'" :value="item.quantity">
                     <input type="hidden" :name="'items[' + index + '][discount_amount]'" :value="item.discount || 0">
                 </div>
             </template>
         </form>
+
+        {{-- Modal de alerta de stock --}}
+        <div x-show="stockAlertOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="stockAlertOpen = false" @keydown.escape.window="stockAlertOpen = false">
+            <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Stock insuficiente</h3>
+                        <p class="mt-1 text-xs text-slate-500">Revisa la cantidad ingresada.</p>
+                    </div>
+                </div>
+
+                <p class="rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700" x-text="stockAlertMessage"></p>
+
+                <div class="flex justify-end">
+                    <button type="button" @click="stockAlertOpen = false" class="btn btn-primary text-xs">Entendido</button>
+                </div>
+            </div>
+        </div>
 
         {{-- Modal de confirmación para Validar y Emitir --}}
         <div x-show="confirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="confirmOpen = false" @keydown.escape.window="confirmOpen = false">
@@ -400,6 +408,7 @@
             paymentMethods: @json($paymentMethods),
             defaultWarehouse: @json($defaultWarehouse),
             defaultCurrency: @json($defaultCurrency),
+            editingSale: @json($editingSale),
         };
     </script>
 @endpush
